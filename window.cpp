@@ -2,9 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "window.hpp"
+#include "chebyshev.hpp"
 #include "hermite.hpp"
 #include "splines.hpp"
 #include "math.h"
+#include "general.hpp"
 
 #define DEFAULT_A -10
 #define DEFAULT_B 10
@@ -12,23 +14,6 @@
 #define DEFAULT_K 0
 
 using namespace std;
-
-double chebyshevtrans(double a, double b, double x){
-    return (2*x-(b+a))/(b-a);
-}
-
-double chebyshevfunc(double x, double a, double b, double *c, int n){
-    double t0=1,cheb=chebyshevtrans(a,b,x),t1=cheb,t2=2*t1*t1-t0, res=0;
-    for(int i=0;i<n-2;i+=3){
-        res+=c[i]*t0;
-        res+=c[i+1]*t1;
-        res+=c[i+2]*t2;
-        t0=2*t2*cheb-t1;
-        t1=2*t0*cheb-t2;
-        t2=2*t1*cheb-t0;
-    }
-    return res;
-}
 
 static double f0(double x){
     return 1;
@@ -85,7 +70,6 @@ static double df5(double x){
 static double df6 (double x){
     return (-50*x)/((25*x*x+1)*(25*x*x+1));
 }
-
 
 static double d2f0(double x){
     return 0;
@@ -144,13 +128,63 @@ int Window::parse_command_line(int argc, char *argv[]){
        || k>6
        || n<=0)
         return -2;
+    k=(k-1)%7;
     change_func();
     return 0;
 }
 
+void Window::allocate(){
+    x=(double*)malloc(n*sizeof(double));
+    if(n<=50){
+        c=(double*)malloc(n*sizeof(double));
+        cx=(double*)malloc(n*sizeof(double));
+        cy=(double*)malloc(n*sizeof(double));
+    }
+    y=(double*)malloc(n*sizeof(double));
+    if(view_id==1 || view_id==3 || view_id==4)
+        h=(double*)malloc(4*(n-1)*sizeof(double));
+    if(view_id==2 || view_id==3 || view_id==4)
+        sp=(double*)malloc(3*n*sizeof(double));
+    dy=(double*)malloc(n*sizeof(double));
+    extr=(double*)malloc(2*sizeof(double));
+    extr[0]=min_y;
+    extr[1]=max_y;
+}
+
+void Window::print_console(double delta_y){
+    printf("format: %d\n", view_id);
+    printf("segment: [%lf;%lf]\n", a, b);
+    printf("squeeze-stretch: %d\n", s);
+    printf("points: %d\n", n);
+    printf("disturbance: %d\n", p);
+    printf("function absmax: %lf\n", absmax);
+    if(k==0 && p==0 && view_id!=4){
+        printf("factic absmax: %lf\n", absmax);
+        printf("extrema: %lf %lf\n\n", absmax);
+    }else{
+        printf("factic absmax: %lf\n", max(fabs(extr[0]+delta_y), fabs(extr[1]-delta_y)));
+        printf("extrema: %lf %lf\n\n", extr[0]+delta_y, extr[1]-delta_y);
+    }
+}
+
+void Window::destroy(){
+    free(x);
+    free(y);
+    if(n<=50 && (view_id==0 || view_id==3 || view_id==4)){
+        free(c);
+        free(cx);
+        free(cy);
+    }
+    free(dy);
+    if(view_id==2 || view_id==3 || view_id==4)
+       free(sp);
+    if(view_id==1 || view_id==3 || view_id==4)
+       free(h);
+    free(extr);
+}
+
 void Window::change_func(){
     k=(k+1)%7;
-    //double dif=y[n/2];
     switch(k){
         case 0:
             f_name="k=0 f(x)=1";
@@ -284,312 +318,226 @@ void Window::paintEvent(QPaintEvent *event){
     QPainter painter(this);
     double x1, x2, y1, y2, x3, y3;
     double delta_y, delta_x=(b-a)/(n-1);
+    delta_x/=10000;
     QPen pen_black(Qt::black, 0, Qt::SolidLine);
     QPen pen_red(Qt::red, 0, Qt::SolidLine);
     QPen pen_green(Qt::green, 0, Qt::SolidLine);
     QPen pen_blue(Qt::blue, 0, Qt::SolidLine);
     QPen pen_cyan(Qt::cyan, 0, Qt::SolidLine);
-    x=(double*)malloc(n*sizeof(double));
-    y=(double*)malloc(n*sizeof(double));
-    h=(double*)malloc(4*n*sizeof(double));
-    sp=(double*)malloc(3*n*sizeof(double));
-    dy=(double*)malloc(n*sizeof(double));
-    c=(double*)malloc(n*sizeof(double));
-    printf("%d\n", view_id);
-    printf("[%lf, %lf]\n",a,b);
-    x[0]=a;
-    y[0]=f(a);
-    dy[0]=df(a);
-    for(int i=1; i<n; ++i){
-        x[i]=x[i-1]+(b-a)/(n-1);
-        y[i]=f(x[i]);
-        if(i==n/2){
-            y[i]+=p*0.1*max_y;
-            if(p>0 && y[i]>max_y){
-                max_y=y[i];
-            }
-            if(p<0 && y[i]<min_y){
-                min_y=y[i];
-            }
-            absmax=max(fabs(min_y), fabs(max_y));
+    allocate();
+    fillpoints(x, y, dy, n, a, b, f, df);
+    if(p!=0){
+        y[n/2]+=(p*0.1*absmax);
+        if(p>0 && y[n/2]>max_y){
+            max_y=y[n/2];
+            extr[1]=y[n/2];
         }
-        dy[i]=df(x[i]);
-        c[i]=0;
+        if(p<0 && y[n/2]<min_y){
+            min_y=y[n/2];
+            extr[0]=y[n/2];
+        }
+        absmax=max(fabs(min_y), fabs(max_y));
     }
-    
-    delta_y=0.01*(max_y-min_y);
-    min_y-=delta_y;
-    max_y+=delta_y;
+    if((view_id==0 || view_id==3 || view_id==4) && n<=50){
+        chebyshevpoints(cx, cy, n, a, b, f);
+        for(int i=0; i<n; ++i){
+            if(cx[i]<=x[n/2] && cx[i]>=x[n/2]){
+                cy[i]+=(p*0.1*max_y);
+                if(cy[i]>extr[1])
+                    extr[1]=cy[i];
+                if(cy[i]<extr[0])
+                    extr[0]=cy[i];
+                break;
+            }
+        }
+        chebyshevfunc(c, cy, n);
+    }
+    if(view_id==1 || view_id==3 || view_id==4)
+       hermitefunc(n, x, y, dy, h);
+    //splinefunc(n, x, y, sp, dy);
+    if(view_id==2 || view_id==3 || view_id==4)
+        splinefunc(n, y, sp, dy, a, b);
+    if((view_id==0 || view_id==3) && n<=50)
+        chebyshevextrema(c, cx, n, a, b, extr);
+    if(view_id==1 || view_id==3)
+        hermiteextrema(h, x, n, extr);
+    if(view_id==2 || view_id==3)
+        splineextrema(sp, x, n, extr);
+    if(view_id==4){
+        extr[0]=0;
+        extr[1]=0;
+        if(n<=50)
+            chebysheverrorextrema(c, cx, n, a, b, extr, f);
+        hermiteerrorextrema(h, x, y, n, extr, f);
+        splineerrorextrema(sp, x, n, extr, f);
+    }
+    delta_y=0.01*(extr[1]-extr[0]);
+    extr[0]-=delta_y;
+    extr[1]+=delta_y;
+    print_console(delta_y);
     painter.save();
     // make Coordinate Transformations
     painter.translate(0.5*width(), 0.5*height());
-    painter.scale(width()/(b-a), -height()/(max_y-min_y));
-    painter.translate(-0.5*(a+b), -0.5*(min_y+max_y));
-   // hermitefunc(n, x, y, dy, h);
-    for(int i=0; i<n-1; ++i){
-        double dify=y[i+1]-y[i], divdif=dify/delta_x;
-        h[4*i]=y[i];
-        h[4*i+1]=dy[i];
-        h[4*i+2]=(3*divdif-2*dy[i]-dy[i+1])/delta_x;
-        h[4*i+3]=(dy[i]+dy[i+1]-2*divdif)/(delta_x*delta_x);
+    if(k==0 && p==0 && view_id!=4){
+        painter.scale(width()/(b-a), -height()/2);
+        painter.translate(-0.5*(a+b), -1);
+    }else{
+        painter.scale(width()/(b-a), -height()/(extr[1]-extr[0]));
+        painter.translate(-0.5*(a+b), -0.5*(extr[1]+extr[0]));
     }
-    splinefunc(n, x, y, sp, dy, a, b);
-    for(int i=0;i<n;++i){
-        double xx=cos(3.1415926535897932384626433832795*(2*i+1)/(2*n));
-        double res1=f((a+b)/2+(b-a)*xx/2);
-        double res2=res1*xx;
-        double res3=2*xx*res2-res1;
-        c[0]+=res1;
-        c[1]+=res2;
-        c[2]+=res3;
-        for(int j=3;j<n;++j){
-            res1=res2;
-            res2=res3;
-            res3=2*xx*res2-res1;
-            c[j]+=(res3);
-        }
-    }
-    for(int i=0;i<n;++i){
-        c[i]/=n;
-        if(i)
-            c[i]*=2;
-    }
+    painter.setPen(pen_red);
+    painter.drawLine(QPointF(a, 0), QPointF(b, 0));
+    if(k==0 && p==0 && view_id!=4)
+        painter.drawLine(QPointF(0, 0), QPointF(0, 2));
+    else
+        painter.drawLine(QPointF(0, extr[0]), QPointF(0, extr[1]));
     if(view_id!=4){
         painter.setPen(pen_black);
-        x1=a;
-        y1=f(x1);
-        for(x2=x1+delta_x; x2-b<1e-6; x2+=delta_x){
-            for(x3=x1+delta_x*1e-4; x3-x2<1e-6; x3+=delta_x*0.0001){
+        for(int i=0;i<n-1;++i){
+            x1=x[i];
+            x2=x[i+1];
+            y1=y[i];
+            for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
                 y3=f(x3);
                 painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
                 x1=x3;
                 y1=y3;
             }
-            y2=f(x2);
-            if(x2==a+delta_x*n/2){
-                y2+=p*0.1*absmax;
-            }
-            x1=x2;
-            y1=y2;
+            y2=y[i+1];
+            painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
         }
-        y2=f(b);
-        //printf("Graph: %lf %lf %lf %lf\n",x1, y1, b, y2);
-        painter.drawLine(QPointF(x1, y1), QPointF(b, y2));
-    }
-    if(view_id==0 || view_id==3){
-        painter.setPen(pen_green);
-        x1=a;
-        y1=hermitevalue(x1, a, b, n, x, h);
-        for(x2=x1+delta_x; x2-b<1e-6; x2+=delta_x){
-            for(x3=x1+delta_x*1e-4; x3-x2<1e-6; x3+=delta_x*0.0001){
-                y3=hermitevalue(x3, a, b, n, x, h);
-                //printf("ZW: %lf %lf\n",y3, f(x3));
-                painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
-                x1=x3;
-                y1=y3;
-            }
-            y2=hermitevalue(x2, a, b, n, x, h);
-            //printf("ZW: %lf %lf\n",y2, f(x2));
-            x1=x2;
-            y1=y2;
-        }
-        y2=hermitevalue(b, a, b, n, x, h);
-        painter.drawLine(QPointF(x1, y1), QPointF(b, y2));
-        //printf("Hermite: %lf %lf %lf %lf\n",x1, y1, b, y2);
     }
     if(view_id==1 || view_id==3){
-        painter.setPen(pen_blue);
-        x1=a;
-        y1=splinevalue(a, a, b, n, sp, x);
-        if(y1<min_y)
-            min_y=y1;
-        if(y1>max_y)
-            max_y=y1;
-        for(x2=x1+delta_x/2; x2-b<1e-6; x2+=delta_x){
-            for(x3=x1+delta_x*1e-4; x3-x2<1e-6; x3+=delta_x*0.0001){
-                y3=splinevalue(x3, a, b, n, sp, x);
-                if(y3<min_y)
-            min_y=y3;
-        if(y3>max_y)
-            max_y=y3;
-                //printf("ZW: %lf %lf\n",y3, f(x3));
+        painter.setPen(pen_green);
+        for(int i=0;i<n-1;++i){
+            x1=x[i];
+            x2=x[i+1];
+            y1=hermitevaluen(x1, h, i);
+            printf("i= %d , y[i] = %lf , hermite = %lf\n", i, y[i], y1);
+            for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+                y3=hermitevaluen(x3, h, i);
                 painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
                 x1=x3;
                 y1=y3;
             }
-            y2=splinevalue(x2, a, b, n, sp, x);
-            if(y2<min_y)
-            min_y=y2;
-        if(y2>max_y)
-            max_y=y2;
-            //printf("ZW: %lf %lf\n",y2, f(x2));
-            x1=x2;
-            y1=y2;
+            y2=hermitevaluen(x2, h, i);
+            painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
         }
-        y2=splinevalue(b, a, b, n, sp, x);
-        painter.drawLine(QPointF(x1, y1), QPointF(b, y2));
     }
-    if((view_id==2 || view_id==3) && n<=50){
+    if(view_id==2 || view_id==3){
+        painter.setPen(pen_blue);
+        for(int i=0;i<n;++i){
+            x1=x[i];
+            if(i)
+                x1=(x[i]+x[i-1])/2.0;
+            if(i!=n-1)
+                x2=(x[i]+x[i+1])/2.0;
+            else
+                x2=x[i];
+            y1=splinevaluen(x1, sp, i);
+            for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+                y3=splinevaluen(x3, sp, i);
+                painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
+                x1=x3;
+                y1=y3;
+            }
+            y2=splinevaluen(x2, sp, i);
+            painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
+        }
+    }
+    if((view_id==0 || view_id==3) && n<=50){
         painter.setPen(pen_cyan);
         x1=a;
-        y1=chebyshevfunc(x1, a, b, c, n);
-        if(y1<min_y)
-            min_y=y1;
-        if(y1>max_y)
-            max_y=y1;
-        x2=x1+0.0001*delta_x;
-        y2=chebyshevfunc(x2, a, b, c, n);
-        if(y2<min_y)
-            min_y=y2; 
-        if(y2>max_y)
-            max_y=y2;
-        while(x2<b-1e-6){
+        y1=chebyshevvalue(x1, a, b, c, n);
+        for(int i=0; i<=n; ++i){
+            if(i<n)
+                x2=cx[i];
+            else
+                x2=b;
+            for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+                y3=chebyshevvalue(x3, a, b, c, n);
+                painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
+                x1=x3;
+                y1=y3;
+            }
+            y2=chebyshevvalue(x2, a, b, c, n);
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
-            //printf("Chebyshev: %lf, %lf, %lf, %lf\n", x1, y1, x2, y2);
-                //painter.drawLine(x1, y1, x3, y3);
             x1=x2;
             y1=y2;
-            x2+=0.0001*delta_x;
-            y2=chebyshevfunc(x2, a, b, c, n);
-            if(y2<min_y)
-                min_y=y2; 
-            if(y2>max_y)
-                max_y=y2;
         }
-        x2=b;
-        y2=chebyshevfunc(x2, a, b, c, n);
-        painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
-        //painter.drawLine(x1, y1, x2, y2);
-       // update();
     }
-
     if(view_id==4){
         painter.setPen(pen_green);
-        x1=a;
-        y1=f(x1)-hermitevalue(x1, a, b, n, x, h);
-        for(x2=x1+delta_x; x2<b-1e-6; x2+=delta_x){
-            y2=f(x2)-hermitevalue(x2, a, b, n, x, h);
-/*
-            if(i==n/2)
-                y2+=delta*0.1*(abs(max_y)>abs(min_y) ? abs(max_y) : abs(min_y));
-*/            
+        for(int i=0;i<n-1;++i){
+            x1=x[i];
+            x2=x[i+1];
+            y1=y[i]-hermitevaluen(x1, h, i);
+            for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+                y3=f(x3)-hermitevaluen(x3, h, i);
+                painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
+                x1=x3;
+                y1=y3;
+            }
+            y2=y[i+1]-hermitevaluen(x2, h, i);
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
-           // painter.drawLine(x1, y1, x2, y2);
-            x1=x2;
-            y1=y2;
         }
-        x2=b;
-        y2=f(x2)-hermitevalue(x2, a, b, n, x, h);
-        painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
-        //painter.drawLine(x1, y1, x2, y2);
         painter.setPen(pen_blue);
-        x1=a;
-        y1=f(x1)-splinevalue(x1, a, b, n, sp, x);
-        for(int i=0, x2=x1+delta_x; x2<b-1e-6; x2+=delta_x, ++i){
-            if(i==0 || i==n-2)
-                x2-=(delta_x/2);
-            y2=f(x2)-splinevalue(x2, a, b, n, sp, x);
-  /*          if(i==n/2)
-                y2+=delta*0.1*(abs(max_y)>abs(min_y) ? abs(max_y) : abs(min_y));*/
-            painter.drawLine(QPointF(x1, y1), QPointF (x2, y2));
-            //painter.drawLine(x1, y1, x2, y2);
-            x1=x2;
-            y1=y2;
-        }
-        x2=b;
-        y2=f(x2)-hermitevalue(x2, a, b, n, x, h);
-        painter.drawLine (QPointF(x1, y1), QPointF(x2, y2));
-        //painter.drawLine(x1, y1, x2, y2);
-       // update();
-        if(n<=50){
-        painter.setPen(pen_cyan);
-        x1=a;
-        y1=f(x1)-chebyshevfunc(x1, a, b, c, n);
-        x2=x1+0.0001*delta_x;
-        y2=f(x2)-chebyshevfunc(x2, a, b, c, n);
-        while(x2<b-1e-6){
+        for(int i=0;i<n;++i){
+            x1=x[i];
+            if(i)
+                x1=(x[i]+x[i-1])/2.0;
+            if(i!=n-1)
+                x2=(x[i]+x[i+1])/2.0;
+            else
+                x2=x[i];
+            y1=f(x1)-splinevaluen(x1, sp, i);
+            for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+                y3=f(x3)-splinevaluen(x3, sp, i);
+                if(fabs(x3-y[n/2])<1e-6)
+                    y3+=(p*0.1*absmax);
+                painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
+                x1=x3;
+                y1=y3;
+            }
+            y2=f(x2)-splinevaluen(x2, sp, i);
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
-            //printf("Chebyshev: %lf, %lf, %lf, %lf\n", x1, y1, x2, y2);
-                //painter.drawLine(x1, y1, x3, y3);
-            x1=x2;
-            y1=y2;
-            x2+=0.0001*delta_x;
-            y2=f(x2)-chebyshevfunc(x2, a, b, c, n);
-        }
-        x2=b;
-        y2=f(x2)-chebyshevfunc(x2, a, b, c, n); 
-        painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
         }
     }
-    painter.setPen(pen_red);
-    painter.drawLine(a, 0, b, 0);
-    painter.drawLine(0, max_y, 0, min_y);
-    delta_y=0.01*(max_y-min_y);
+    if(view_id==4 && n<=50){
+        painter.setPen(pen_cyan);
+        x1=a;
+        y1=f(x1)-chebyshevvalue(x1, a, b, c, n);
+        for(int i=0; i<=n; ++i){
+            if(i<n)
+                x2=cx[i];
+            else
+                x2=b;
+            for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+                y3=f(x3)-chebyshevvalue(x3, a, b, c, n);
+                if(fabs(x3-y[n/2])<1e-6)
+                    y3+=(p*0.1*absmax);
+                painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
+                x1=x3;
+                y1=y3;
+            }
+            y2=f(x2)-chebyshevvalue(x2, a, b, c, n);
+            if(fabs(x3-y[n/2])<1e-6)
+                y2+=(p*0.1*absmax);
+            painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
+            x1=x2;
+            y1=y2;
+        }
+    }
     painter.restore();
     painter.setPen("black");
     painter.drawText(0, 20, f_name);
-    painter.drawText(10, 30, QString("Format = %1").arg(view_id + 1));
-    painter.drawText(10, 45, QString("Scale = %1 %2 %3").arg(s).arg(a).arg(b));
-    painter.drawText(10, 60, QString("n = %1").arg(n));
-    painter.drawText(10, 75, QString("p = %1").arg(p));
-    printf("points: %d\n", n);
-    printf("max_y: %lf\n", max_y);
-    free(x);
-    free(y);
-    free(c);
-    free(dy);
-    free(sp);
-    free(h);
+    painter.drawText(10, 30, QString("format: %1").arg(view_id));
+    painter.drawText(10, 45, QString("scale: %1 %2 %3").arg(s).arg(a).arg(b));
+    painter.drawText(10, 60, QString("points: %1").arg(n));
+    painter.drawText(10, 75, QString("p: %1").arg(p));
+    if(k==0 && p==0 && view_id!=4)
+        painter.drawText(10, 90, QString("absmax(fact): %1( %2)").arg(absmax).arg(absmax));
+    else
+        painter.drawText(10, 90, QString("absmax(fact): %1( %2)").arg(absmax).arg(max(fabs(extr[0]+delta_y), fabs(extr[1]-delta_y))));
+    destroy();
 }
-
-/*    switch(k){
-        case 0:
-             min_y=1;
-             max_y=1;
-             absmax=1;
-             break;
-        case 1:
-             min_y=a;
-             max_y=b;
-             absmax=max(fabs(min_y), fabs(max_y));
-             break;
-        case 2:
-             min_y=min(a*a, b*b);
-             max_y=max(b*b, a*a);
-             absmax=max_y;
-             break;
-        case 3:
-             min_y=a*a*a;
-             max_y=b*b*b;
-             absmax=max(fabs(min_y), fabs(max_y));
-             break;
-        case 4:
-             min_y=min(a*a*a*a, b*b*b*b);
-             max_y=max(b*b*b*b, a*a*a*a);
-             absmax=max_y;
-             break;
-        case 5:
-             min_y=exp(a);
-             max_y=exp(b);
-             absmax=max_y;
-             break;
-        case 6:
-             if(a>=0 && a<=0){
-                 min_y=1/(25*b*b+1);
-                 max_y=1;
-                 absmax=1;
-             }else if(b>=0 && b<=0){ 
-                 min_y=1/(25*a*a+1);
-                 max_y=1;
-                 absmax=1;
-             }else if(a*b>0){
-                 min_y=min(1/(25*a*a+1), 1/(25*b*b+1));
-                 max_y=max(1/(25*a*a+1), 1/(25*b*b+1));
-                 absmax=max_y;
-             }else if(a*b<0){
-                 min_y=min(1/(25*a*a+1), 1/(25*b*b+1));
-                 max_y=1;
-                 absmax=1;
-             }
-             break;
-    }*/

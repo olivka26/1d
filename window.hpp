@@ -6,7 +6,6 @@
 class Window : public QWidget{
     Q_OBJECT
 private:
-    int func_id; //approximating fucntion
     const char *f_name;
     double a; //left end
     double b; //right end
@@ -20,11 +19,14 @@ private:
     //int delta=0;
     int p=0;//desturbance;
     double *x;//points array
+    double *cx;//Chebyshev points array
+    double *cy;//Chebyshev values array
     double *y;//function values array
     double *dy;//derivative values array
     double *sp;//splines coefficients array
     double *h;//Hermite coefficients array
     double *c;//Chebyshev coefficients array
+    double *extr;
     double max_y, min_y, absmax;
 public:
     Window(QWidget *parent);
@@ -32,6 +34,9 @@ public:
     QSize minimumSizeHint()const;
     QSize sizeHint()const;
     int parse_command_line(int argc, char *argv[]);
+    void allocate();
+    void print_console(double delta_y);
+    void destroy();
 public slots:
     void change_func();
     void change_view();
