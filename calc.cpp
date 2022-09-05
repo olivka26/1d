@@ -100,8 +100,8 @@ int calcAndDraw::Draw(mglGraph *gr)
           gr->SetOrigin(0,0);
           gr->SetRanges(a,b,f(a),f(b));
           gr->Axis();
-          gr->Label('x',"x",1);
-          gr->Label('y',"f(x)",1);
+          gr->Label('x', "x", 1);
+          gr->Label('y', "f(x)", 1);
           gr->Grid();
 
 //        gr->SubPlot(2,2,1);	gr->Title("2 axis");
