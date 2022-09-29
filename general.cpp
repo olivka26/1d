@@ -1,5 +1,89 @@
 #include "general.hpp"
 
+double f0(double x){
+    return 1;
+}
+
+double f1(double x){
+    return x;
+}
+
+double f2(double x){
+    return x*x;
+}
+
+double f3(double x){
+    return x*x*x;
+}
+
+double f4(double x){
+    return x*x*x*x;
+}
+
+double f5(double x){
+    return exp(x);
+}
+
+double f6(double x){
+    return 1/(25*x*x+1);
+}
+
+double df0(double x){
+    return 0;
+}
+
+double df1(double x){
+    return 1;
+}
+
+double df2(double x){
+    return 2*x;
+}
+
+double df3(double x){
+    return 3*x*x;
+}
+
+double df4(double x){
+    return 4*x*x*x;
+}
+
+double df5(double x){
+    return exp(x);
+}
+
+double df6 (double x){
+    return (-50*x)/((25*x*x+1)*(25*x*x+1));
+}
+
+double d2f0(double x){
+    return 0;
+}
+
+double d2f1(double x){
+    return 0;
+}
+
+double d2f2(double x){
+    return 2;
+}
+
+double d2f3(double x){
+    return 6*x;
+}
+
+double d2f4(double x){
+    return 12*x*x;
+}
+
+double d2f5(double x){
+    return exp(x);
+}
+
+double d2f6 (double x){
+    return (3750*x*x-50)/((25*x*x+1)*(25*x*x+1)*(25*x*x+1));
+}
+
 double min(double a, double b){
     return (b < a) ? b : a;
 }
@@ -8,13 +92,16 @@ double max(double a, double b){
     return (b > a) ? b : a;
 }
 
-void fillpoints(double *x, double *y, double *dy, int n, double a, double b, double (*f)(double), double (*df)(double)){
+void fillpoints(double *x, int n, double a, double b){
     x[0]=a;
-    y[0]=f(a);
-    dy[0]=df(a);
     double step=(b-a)/(n-1);
     for(int i=1; i<n; ++i){
         x[i]=x[i-1]+step;
+    }
+}
+
+void fillvalues(double *x, double *y, double *dy, int n, double (*f)(double), double (*df)(double)){
+    for(int i=0; i<n; ++i){
         y[i]=f(x[i]);
         dy[i]=df(x[i]);
     }
@@ -26,7 +113,7 @@ void chebyshevextrema(double *c, double *cx, int n, double a, double b, double *
         extr[0]=y1;
     if(y1>extr[1])
         extr[1]=y1;
-    for(int i=0; i<=n; ++i){
+    for(int i=1; i<=n; ++i){
         double x2, y2;
         if(i<n)
             x2=cx[i];
@@ -114,7 +201,7 @@ void chebysheverrorextrema(double *c, double *cx, int n, double a, double b, dou
         extr[0]=y1;
     if(y1>extr[1])
         extr[1]=y1;
-    for(int i=0; i<=n; ++i){
+    for(int i=1; i<=n; ++i){
         double x2, y2;
         if(i<n)
             x2=cx[i];

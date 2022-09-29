@@ -15,97 +15,26 @@
 
 using namespace std;
 
-static double f0(double x){
-    return 1;
-}
-
-static double f1(double x){
-    return x;
-}
-
-static double f2(double x){
-    return x*x;
-}
-
-static double f3(double x){
-    return x*x*x;
-}
-
-static double f4(double x){
-    return x*x*x*x;
-}
-
-static double f5(double x){
-    return exp(x);
-}
-
-static double f6(double x){
-    return 1/(25*x*x+1);
-}
-
-static double df0(double x){
-    return 0;
-}
-
-static double df1(double x){
-    return 1;
-}
-
-static double df2(double x){
-    return 2*x;
-}
-
-static double df3(double x){
-    return 3*x*x;
-}
-
-static double df4(double x){
-    return 4*x*x*x;
-}
-
-static double df5(double x){
-    return exp(x);
-}
-
-static double df6 (double x){
-    return (-50*x)/((25*x*x+1)*(25*x*x+1));
-}
-
-static double d2f0(double x){
-    return 0;
-}
-
-static double d2f1(double x){
-    return 0;
-}
-
-static double d2f2(double x){
-    return 2;
-}
-
-static double d2f3(double x){
-    return 6*x;
-}
-
-static double d2f4(double x){
-    return 12*x*x;
-}
-
-static double d2f5(double x){
-    return exp(x);
-}
-
-static double d2f6 (double x){
-    return (3750*x*x-50)/((25*x*x+1)*(25*x*x+1)*(25*x*x+1));
-}
-
 Window::Window(QWidget *parent)
   : QWidget(parent){
       a=DEFAULT_A;
       b=DEFAULT_B;
       n=DEFAULT_N;
       k=DEFAULT_K;
-      change_func();
+}
+
+Window::~Window(){
+    free(x);
+    free(y);
+    if(n<=50){
+        free(c);
+        free(cx);
+        free(cy);
+    }
+    free(dy);
+    //if(view_id==2 || view_id==3 || view_id==4)
+       free(sp);
+       free(h);
 }
 
 QSize Window::minimumSizeHint()const{
@@ -129,26 +58,47 @@ int Window::parse_command_line(int argc, char *argv[]){
        || n<=0)
         return -2;
     k=(k-1)%7;
+    allocate();
+   fillpoints(x, n, a, b);
+    if(n<=50)
+    chebyshevpoints(cx, n, a, b);
+
+    //printf("parsed\n");
     change_func();
     return 0;
 }
 
 void Window::allocate(){
+    if(x)
+        free(x);
     x=(double*)malloc(n*sizeof(double));
     if(n<=50){
+        if(c)
+            free(c);
         c=(double*)malloc(n*sizeof(double));
+        if(cx)
+            free(cx);
         cx=(double*)malloc(n*sizeof(double));
+        if(cy)
+            free(cy);
         cy=(double*)malloc(n*sizeof(double));
     }
-    y=(double*)malloc(n*sizeof(double));
-    if(view_id==1 || view_id==3 || view_id==4)
+    if(y)
+        free(y);
+    if(!y)
+        y=(double*)malloc(n*sizeof(double));
+    if(h)
+        free(h);
+    if(!h)
         h=(double*)malloc(4*(n-1)*sizeof(double));
-    if(view_id==2 || view_id==3 || view_id==4)
+    if(sp)
+        free(sp);
+    if(!sp)
         sp=(double*)malloc(3*n*sizeof(double));
-    dy=(double*)malloc(n*sizeof(double));
-    extr=(double*)malloc(2*sizeof(double));
-    extr[0]=min_y;
-    extr[1]=max_y;
+    if(dy)
+        free(dy);
+    if(!dy)
+        dy=(double*)malloc(n*sizeof(double));
 }
 
 void Window::print_console(double delta_y){
@@ -160,27 +110,11 @@ void Window::print_console(double delta_y){
     printf("function absmax: %lf\n", absmax);
     if(k==0 && p==0 && view_id!=4){
         printf("factic absmax: %lf\n", absmax);
-        printf("extrema: %lf %lf\n\n", absmax);
+        printf("extrema: %lf %lf\n\n", absmax, absmax);
     }else{
         printf("factic absmax: %lf\n", max(fabs(extr[0]+delta_y), fabs(extr[1]-delta_y)));
         printf("extrema: %lf %lf\n\n", extr[0]+delta_y, extr[1]-delta_y);
     }
-}
-
-void Window::destroy(){
-    free(x);
-    free(y);
-    if(n<=50 && (view_id==0 || view_id==3 || view_id==4)){
-        free(c);
-        free(cx);
-        free(cy);
-    }
-    free(dy);
-    if(view_id==2 || view_id==3 || view_id==4)
-       free(sp);
-    if(view_id==1 || view_id==3 || view_id==4)
-       free(h);
-    free(extr);
 }
 
 void Window::change_func(){
@@ -270,11 +204,75 @@ void Window::change_func(){
              }
             break;
     }
+    //fillpoints(x, n, a, b);
+    fillvalues(x, y, dy, n, f, df);
+    if(p){
+        y[n/2]+=(p*0.1*absmax);
+        if(p>0 && y[n/2]>max_y){
+            max_y=y[n/2];
+        }
+        if(p<0 && y[n/2]<min_y){
+            min_y=y[n/2];
+        }
+        absmax=max(fabs(min_y), fabs(max_y));
+    }
+    if(n<=50){
+
+        chebyshevf(cx, cy, n, f);
+        for(int i=0; i<n; ++i){
+            if(cx[i]<=x[n/2] && cx[i]>=x[n/2]){
+                cy[i]+=(p*0.1*absmax);
+                break;
+            }
+        }
+        chebyshevfunc(c, cy, n);
+    }
+    hermitefunc(n, x, y, dy, h);
+    //splinefunc(n, x, y, sp, dy);
+    splinefunc(n, y, sp, dy, a, b);
+    if(view_id!=4){
+        extr[0]=f(a);
+        extr[1]=f(a);
+    }else{
+        extr[0]=0;
+        extr[1]=0;
+    }
+    if(view_id!=4 && n<=50)
+        chebyshevextrema(c, cx, n, a, b, extr);
+    if(view_id!=4)
+        hermiteextrema(h, x, n, extr);
+    if(view_id!=4)
+        splineextrema(sp, x, n, extr);
+    if(view_id==4 && n<=50)
+        chebysheverrorextrema(c, cx, n, a, b, extr,f);
+    if(view_id==4)
+        hermiteerrorextrema(h, x, y, n, extr,f);
+    if(view_id==4)
+        splineerrorextrema(sp, x, n, extr,f);
     update();
 }
 
 void Window::change_view(){
     view_id=(view_id+1)%5;
+    if(view_id!=4){
+        extr[0]=f(a);
+        extr[1]=f(a);
+    }else{
+        extr[0]=0;
+        extr[1]=0;
+    }
+    if(view_id!=4 && n<=50)
+        chebyshevextrema(c, cx, n, a, b, extr);
+    if(view_id!=4)
+        hermiteextrema(h, x, n, extr);
+    if(view_id!=4)
+        splineextrema(sp, x, n, extr);
+    if(view_id==4 && n<=50)
+        chebysheverrorextrema(c, cx, n, a, b, extr,f);
+    if(view_id==4)
+        hermiteerrorextrema(h, x, y,n, extr,f);
+    if(view_id==4)
+        splineerrorextrema(sp, x, n, extr,f);
     update();
 }
 
@@ -283,6 +281,51 @@ void Window::enhance(){
     a=a-t;
     b=b+t;
     ++s;
+    fillpoints(x, n, a, b);
+    fillvalues(x, y, dy, n, f, df);
+    if(p){
+        y[n/2]+=(p*0.1*absmax);
+        if(p>0 && y[n/2]>max_y){
+            max_y=y[n/2];
+        }
+        if(p<0 && y[n/2]<min_y){
+            min_y=y[n/2];
+        }
+        absmax=max(fabs(min_y), fabs(max_y));
+    }
+    if(n<=50){
+        chebyshevpoints(cx, n, a, b);
+        chebyshevf(cx,cy,n,f);
+        for(int i=0; i<n; ++i){
+            if(cx[i]<=x[n/2] && cx[i]>=x[n/2]){
+                cy[i]+=(p*0.1*absmax);
+                break;
+            }
+        }
+        chebyshevfunc(c, cy, n);
+    }
+    hermitefunc(n, x, y, dy, h);
+    //splinefunc(n, x, y, sp, dy);
+    splinefunc(n, y, sp, dy, a, b);
+    if(view_id!=4){
+        extr[0]=f(a);
+        extr[1]=f(a);
+    }else{
+        extr[0]=0;
+        extr[1]=0;
+    }
+    if(view_id!=4 && n<=50)
+        chebyshevextrema(c, cx, n, a, b, extr);
+    if(view_id!=4)
+        hermiteextrema(h, x, n, extr);
+    if(view_id!=4)
+        splineextrema(sp, x, n, extr);
+    if(view_id==4 && n<=50)
+        chebysheverrorextrema(c, cx, n, a, b, extr,f);
+    if(view_id==4)
+        hermiteerrorextrema(h, x, y, n, extr,f);
+    if(view_id==4)
+        splineerrorextrema(sp, x, n, extr,f);
     update();
 }
 
@@ -291,30 +334,250 @@ void Window::squeeze(){
     a=a+t;
     b=b-t;
     --s;
+    fillpoints(x, n, a, b);
+    fillvalues(x, y, dy, n, f, df);
+    if(p){
+        y[n/2]+=(p*0.1*absmax);
+        if(p>0 && y[n/2]>max_y){
+            max_y=y[n/2];
+        }
+        if(p<0 && y[n/2]<min_y){
+            min_y=y[n/2];
+        }
+        absmax=max(fabs(min_y), fabs(max_y));
+    }
+    if(n<=50){
+        chebyshevpoints(cx, n, a, b);
+        chebyshevf(cx,cy,n,f);
+        for(int i=0; i<n; ++i){
+            if(cx[i]<=x[n/2] && cx[i]>=x[n/2]){
+                cy[i]+=(p*0.1*absmax);
+                break;
+            }
+        }
+        chebyshevfunc(c, cy, n);
+    }
+    hermitefunc(n, x, y, dy, h);
+    //splinefunc(n, x, y, sp, dy);
+    splinefunc(n, y, sp, dy, a, b);
+    if(view_id!=4){
+        extr[0]=f(a);
+        extr[1]=f(a);
+    }else{
+        extr[0]=0;
+        extr[1]=0;
+    }
+    if(view_id!=4 && n<=50)
+        chebyshevextrema(c, cx, n, a, b, extr);
+    if(view_id!=4)
+        hermiteextrema(h, x, n, extr);
+    if(view_id!=4)
+        splineextrema(sp, x, n, extr);
+    if(view_id==4 && n<=50)
+        chebysheverrorextrema(c, cx, n, a, b, extr,f);
+    if(view_id==4)
+        hermiteerrorextrema(h, x, y, n, extr,f);
+    if(view_id==4)
+        splineerrorextrema(sp, x, n, extr,f);
     update();
 }
 
 void Window::more_points(){
     n*=2;
+    allocate();
+    fillpoints(x, n, a, b);
+    fillvalues(x, y, dy, n, f, df);
+    if(p){
+        y[n/2]+=(p*0.1*absmax);
+        if(p>0 && y[n/2]>max_y){
+            max_y=y[n/2];
+        }
+        if(p<0 && y[n/2]<min_y){
+            min_y=y[n/2];
+        }
+        absmax=max(fabs(min_y), fabs(max_y));
+    }
+    if(n<=50){
+        chebyshevpoints(cx, n, a, b);
+        chebyshevf(cx,cy,n,f);
+        for(int i=0; i<n; ++i){
+            if(cx[i]<=x[n/2] && cx[i]>=x[n/2]){
+                cy[i]+=(p*0.1*absmax);
+                break;
+            }
+        }
+        chebyshevfunc(c, cy, n);
+    }
+    hermitefunc(n, x, y, dy, h);
+    //splinefunc(n, x, y, sp, dy);
+    splinefunc(n, y, sp, dy, a, b);
+    if(view_id!=4){
+        extr[0]=f(a);
+        extr[1]=f(a);
+    }else{
+        extr[0]=0;
+        extr[1]=0;
+    }
+    if(view_id!=4 && n<=50)
+        chebyshevextrema(c, cx, n, a, b, extr);
+    if(view_id!=4)
+        hermiteextrema(h, x, n, extr);
+    if(view_id!=4)
+        splineextrema(sp, x, n, extr);
+    if(view_id==4 && n<=50)
+        chebysheverrorextrema(c, cx, n, a, b, extr,f);
+    if(view_id==4)
+        hermiteerrorextrema(h, x, y,n, extr,f);
+    if(view_id==4)
+        splineerrorextrema(sp, x, n, extr,f);
     update();
 }
 
 void Window::less_points(){
     n/=2;
+    allocate();
+    fillpoints(x, n, a, b);
+    fillvalues(x, y, dy, n, f, df);
+    if(p){
+        y[n/2]+=(p*0.1*absmax);
+        if(p>0 && y[n/2]>max_y){
+            max_y=y[n/2];
+        }
+        if(p<0 && y[n/2]<min_y){
+            min_y=y[n/2];
+        }
+        absmax=max(fabs(min_y), fabs(max_y));
+    }
+    if(n<=50){
+        chebyshevpoints(cx, n, a, b);
+        chebyshevf(cx,cy,n,f);
+        for(int i=0; i<n; ++i){
+            if(cx[i]<=x[n/2] && cx[i]>=x[n/2]){
+                cy[i]+=(p*0.1*absmax);
+                break;
+            }
+        }
+        chebyshevfunc(c, cy, n);
+    }
+    hermitefunc(n, x, y, dy, h);
+    //splinefunc(n, x, y, sp, dy);
+    splinefunc(n, y, sp, dy, a, b);
+    if(view_id!=4){
+        extr[0]=f(a);
+        extr[1]=f(a);
+    }else{
+        extr[0]=0;
+        extr[1]=0;
+    }
+    if(view_id!=4 && n<=50)
+        chebyshevextrema(c, cx, n, a, b, extr);
+    if(view_id!=4)
+        hermiteextrema(h, x, n, extr);
+    if(view_id!=4)
+        splineextrema(sp, x, n, extr);
+    if(view_id==4 && n<=50)
+        chebysheverrorextrema(c, cx, n, a, b, extr,f);
+    if(view_id==4)
+        hermiteerrorextrema(h, x, y,n, extr,f);
+    if(view_id==4)
+        splineerrorextrema(sp, x, n, extr,f);
     update();
 }
 
 void Window::delta_up(){
     ++p;
+    if(p){
+        y[n/2]=f(x[n/2])+(p*0.1*absmax);
+        if(p>0 && y[n/2]>max_y){
+            max_y=y[n/2];
+        }
+        if(p<0 && y[n/2]<min_y){
+            min_y=y[n/2];
+        }
+        absmax=max(fabs(min_y), fabs(max_y));
+    }
+    if(n<=50){
+        for(int i=0; i<n; ++i){
+            if(cx[i]<=x[n/2] && cx[i]>=x[n/2]){
+                cy[i]=f(cx[i])+(p*0.1*absmax);
+                break;
+            }
+        }
+        chebyshevfunc(c, cy, n);
+    }
+    hermitefunc(n, x, y, dy, h);
+    //splinefunc(n, x, y, sp, dy);
+    splinefunc(n, y, sp, dy, a, b);
+    if(view_id!=4){
+        extr[0]=f(a);
+        extr[1]=f(a);
+    }else{
+        extr[0]=0;
+        extr[1]=0;
+    }
+    if(view_id!=4 && n<=50)
+        chebyshevextrema(c, cx, n, a, b, extr);
+    if(view_id!=4)
+        hermiteextrema(h, x, n, extr);
+    if(view_id!=4)
+        splineextrema(sp, x, n, extr);
+    if(view_id==4 && n<=50)
+        chebysheverrorextrema(c, cx, n, a, b, extr,f);
+    if(view_id==4)
+        hermiteerrorextrema(h, x, y,n, extr,f);
+    if(view_id==4)
+        splineerrorextrema(sp, x, n, extr,f);
     update();
 }
 
 void Window::delta_down(){
     --p;
+    if(p){
+        y[n/2]=f(x[n/2])+(p*0.1*absmax);
+        if(p>0 && y[n/2]>max_y){
+            max_y=y[n/2];
+        }
+        if(p<0 && y[n/2]<min_y){
+            min_y=y[n/2];
+        }
+        absmax=max(fabs(min_y), fabs(max_y));
+    }
+    if(n<=50){
+        for(int i=0; i<n; ++i){
+            if(cx[i]<=x[n/2] && cx[i]>=x[n/2]){
+                cy[i]=f(cx[i])+(p*0.1*absmax);
+                break;
+            }
+        }
+        chebyshevfunc(c, cy, n);
+    }
+    hermitefunc(n, x, y, dy, h);
+    //splinefunc(n, x, y, sp, dy);
+    splinefunc(n, y, sp, dy, a, b);
+    if(view_id!=4){
+        extr[0]=f(a);
+        extr[1]=f(a);
+    }else{
+        extr[0]=0;
+        extr[1]=0;
+    }
+    if(view_id!=4 && n<=50)
+        chebyshevextrema(c, cx, n, a, b, extr);
+    if(view_id!=4)
+        hermiteextrema(h, x, n, extr);
+    if(view_id!=4)
+        splineextrema(sp, x, n, extr);
+    if(view_id==4 && n<=50)
+        chebysheverrorextrema(c, cx, n, a, b, extr,f);
+    if(view_id==4)
+        hermiteerrorextrema(h, x, y,n, extr,f);
+    if(view_id==4)
+        splineerrorextrema(sp, x, n, extr,f);
     update();
 }
 
 void Window::paintEvent(QPaintEvent *event){
+    //printf("paint\n");
     QPainter painter(this);
     double x1, x2, y1, y2, x3, y3;
     double delta_y, delta_x=(b-a)/(n-1);
@@ -324,21 +587,9 @@ void Window::paintEvent(QPaintEvent *event){
     QPen pen_green(Qt::green, 0, Qt::SolidLine);
     QPen pen_blue(Qt::blue, 0, Qt::SolidLine);
     QPen pen_cyan(Qt::cyan, 0, Qt::SolidLine);
-    allocate();
-    fillpoints(x, y, dy, n, a, b, f, df);
-    if(p!=0){
-        y[n/2]+=(p*0.1*absmax);
-        if(p>0 && y[n/2]>max_y){
-            max_y=y[n/2];
-            extr[1]=y[n/2];
-        }
-        if(p<0 && y[n/2]<min_y){
-            min_y=y[n/2];
-            extr[0]=y[n/2];
-        }
-        absmax=max(fabs(min_y), fabs(max_y));
-    }
-    if((view_id==0 || view_id==3 || view_id==4) && n<=50){
+    //allocate();
+    //fillpoints(x, y, dy, n, a, b, f, df);
+    /*if((view_id==0 || view_id==3 || view_id==4) && n<=50){
         chebyshevpoints(cx, cy, n, a, b, f);
         for(int i=0; i<n; ++i){
             if(cx[i]<=x[n/2] && cx[i]>=x[n/2]){
@@ -352,17 +603,12 @@ void Window::paintEvent(QPaintEvent *event){
         }
         chebyshevfunc(c, cy, n);
     }
-    if(view_id==1 || view_id==3 || view_id==4)
-       hermitefunc(n, x, y, dy, h);
+    hermitefunc(n, x, y, dy, h);
     //splinefunc(n, x, y, sp, dy);
-    if(view_id==2 || view_id==3 || view_id==4)
-        splinefunc(n, y, sp, dy, a, b);
-    if((view_id==0 || view_id==3) && n<=50)
-        chebyshevextrema(c, cx, n, a, b, extr);
-    if(view_id==1 || view_id==3)
-        hermiteextrema(h, x, n, extr);
-    if(view_id==2 || view_id==3)
-        splineextrema(sp, x, n, extr);
+    splinefunc(n, y, sp, dy, a, b);
+    chebyshevextrema(c, cx, n, a, b, extr);
+    hermiteextrema(h, x, n, extr);
+    splineextrema(sp, x, n, extr);
     if(view_id==4){
         extr[0]=0;
         extr[1]=0;
@@ -370,7 +616,7 @@ void Window::paintEvent(QPaintEvent *event){
             chebysheverrorextrema(c, cx, n, a, b, extr, f);
         hermiteerrorextrema(h, x, y, n, extr, f);
         splineerrorextrema(sp, x, n, extr, f);
-    }
+    }*/
     delta_y=0.01*(extr[1]-extr[0]);
     extr[0]-=delta_y;
     extr[1]+=delta_y;
@@ -413,7 +659,6 @@ void Window::paintEvent(QPaintEvent *event){
             x1=x[i];
             x2=x[i+1];
             y1=hermitevaluen(x1, h, i);
-            printf("i= %d , y[i] = %lf , hermite = %lf\n", i, y[i], y1);
             for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
                 y3=hermitevaluen(x3, h, i);
                 painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
@@ -449,7 +694,7 @@ void Window::paintEvent(QPaintEvent *event){
         painter.setPen(pen_cyan);
         x1=a;
         y1=chebyshevvalue(x1, a, b, c, n);
-        for(int i=0; i<=n; ++i){
+        for(int i=1; i<=n; ++i){
             if(i<n)
                 x2=cx[i];
             else
@@ -507,7 +752,7 @@ void Window::paintEvent(QPaintEvent *event){
         painter.setPen(pen_cyan);
         x1=a;
         y1=f(x1)-chebyshevvalue(x1, a, b, c, n);
-        for(int i=0; i<=n; ++i){
+        for(int i=1; i<=n; ++i){
             if(i<n)
                 x2=cx[i];
             else
@@ -539,5 +784,4 @@ void Window::paintEvent(QPaintEvent *event){
         painter.drawText(10, 90, QString("absmax(fact): %1( %2)").arg(absmax).arg(absmax));
     else
         painter.drawText(10, 90, QString("absmax(fact): %1( %2)").arg(absmax).arg(max(fabs(extr[0]+delta_y), fabs(extr[1]-delta_y))));
-    destroy();
 }

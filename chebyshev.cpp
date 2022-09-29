@@ -1,6 +1,6 @@
 #include "chebyshev.hpp"
 
-void chebyshevpoints(double *cx, double *cy, int n, double a, double b, double (*f)(double)){
+void chebyshevpoints(double *cx, int n, double a, double b){
     double step=3.1415926535897932384626433832795/n;
     double angle=step/2.0;
     double semisum=(a+b)/2;
@@ -9,8 +9,13 @@ void chebyshevpoints(double *cx, double *cy, int n, double a, double b, double (
         cx[i]=cos(angle);
         cx[i]*=semidif;
         cx[i]+=semisum;
-        cy[i]=f(cx[i]);
         angle+=step;
+    }
+}
+
+void chebyshevf(double *cx, double *cy, int n, double (*f)(double)){
+    for(int i=n-1;i>=0;--i){
+        cy[i]=f(cx[i]);
     }
 }
 

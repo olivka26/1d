@@ -50,14 +50,18 @@ OBJECTS_DIR   = ./
 
 ####### Files
 
-SOURCES       = hermite.cpp \
+SOURCES       = chebyshev.cpp \
+		hermite.cpp \
 		main.cpp \
 		splines.cpp \
-		window.cpp moc_window.cpp
-OBJECTS       = hermite.o \
+		window.cpp \
+		general.cpp moc_window.cpp
+OBJECTS       = chebyshev.o \
+		hermite.o \
 		main.o \
 		splines.o \
 		window.o \
+		general.o \
 		moc_window.o
 DIST          = /usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/common/unix.conf \
@@ -115,6 +119,7 @@ DIST          = /usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/qt_config.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/linux-g++/qmake.conf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/spec_post.prf \
+		.qmake.stash \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/exclusive_builds.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/toolchain.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/default_pre.prf \
@@ -133,12 +138,16 @@ DIST          = /usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/exceptions.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/yacc.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/lex.prf \
-		1d.pro hermite.hpp \
+		1d.pro chebyshev.hpp \
+		hermite.hpp \
 		splines.hpp \
-		window.hpp hermite.cpp \
+		window.hpp \
+		general.hpp chebyshev.cpp \
+		hermite.cpp \
 		main.cpp \
 		splines.cpp \
-		window.cpp
+		window.cpp \
+		general.cpp
 QMAKE_TARGET  = 1d
 DESTDIR       = 
 TARGET        = 1d
@@ -206,6 +215,7 @@ Makefile: 1d.pro /usr/lib/aarch64-linux-gnu/qt5/mkspecs/linux-g++/qmake.conf /us
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/qt_config.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/linux-g++/qmake.conf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/spec_post.prf \
+		.qmake.stash \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/exclusive_builds.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/toolchain.prf \
 		/usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/default_pre.prf \
@@ -285,6 +295,7 @@ Makefile: 1d.pro /usr/lib/aarch64-linux-gnu/qt5/mkspecs/linux-g++/qmake.conf /us
 /usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/qt_config.prf:
 /usr/lib/aarch64-linux-gnu/qt5/mkspecs/linux-g++/qmake.conf:
 /usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/spec_post.prf:
+.qmake.stash:
 /usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/exclusive_builds.prf:
 /usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/toolchain.prf:
 /usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/default_pre.prf:
@@ -322,8 +333,8 @@ distdir: FORCE
 	@test -d $(DISTDIR) || mkdir -p $(DISTDIR)
 	$(COPY_FILE) --parents $(DIST) $(DISTDIR)/
 	$(COPY_FILE) --parents /usr/lib/aarch64-linux-gnu/qt5/mkspecs/features/data/dummy.cpp $(DISTDIR)/
-	$(COPY_FILE) --parents hermite.hpp splines.hpp window.hpp $(DISTDIR)/
-	$(COPY_FILE) --parents hermite.cpp main.cpp splines.cpp window.cpp $(DISTDIR)/
+	$(COPY_FILE) --parents chebyshev.hpp hermite.hpp splines.hpp window.hpp general.hpp $(DISTDIR)/
+	$(COPY_FILE) --parents chebyshev.cpp hermite.cpp main.cpp splines.cpp window.cpp general.cpp $(DISTDIR)/
 
 
 clean: compiler_clean 
@@ -379,6 +390,9 @@ compiler_clean: compiler_moc_predefs_clean compiler_moc_header_clean
 
 ####### Compile
 
+chebyshev.o: chebyshev.cpp chebyshev.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o chebyshev.o chebyshev.cpp
+
 hermite.o: hermite.cpp hermite.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o hermite.o hermite.cpp
 
@@ -389,9 +403,17 @@ splines.o: splines.cpp splines.hpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o splines.o splines.cpp
 
 window.o: window.cpp window.hpp \
+		chebyshev.hpp \
+		hermite.hpp \
+		splines.hpp \
+		general.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o window.o window.cpp
+
+general.o: general.cpp general.hpp \
+		chebyshev.hpp \
 		hermite.hpp \
 		splines.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o window.o window.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o general.o general.cpp
 
 moc_window.o: moc_window.cpp 
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o moc_window.o moc_window.cpp
