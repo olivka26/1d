@@ -576,8 +576,7 @@ void Window::delta_down(){
     update();
 }
 
-void Window::paintEvent(QPaintEvent *event){
-    //printf("paint\n");
+void Window::paintEvent(QPaintEvent* /*event*/){
     QPainter painter(this);
     double x1, x2, y1, y2, x3, y3;
     double delta_y, delta_x=(b-a)/(n-1);

@@ -1,6 +1,8 @@
 #include "general.hpp"
 
 double f0(double x){
+    if(x>0)
+        return 1;
     return 1;
 }
 
@@ -29,10 +31,14 @@ double f6(double x){
 }
 
 double df0(double x){
+    if(x>0)
+        return 0;
     return 0;
 }
 
 double df1(double x){
+    if(x>0)
+        return 1;
     return 1;
 }
 
@@ -57,14 +63,20 @@ double df6 (double x){
 }
 
 double d2f0(double x){
+    if(x>0)
+        return 0;
     return 0;
 }
 
 double d2f1(double x){
+    if(x>0)
+        return 0;
     return 0;
 }
 
 double d2f2(double x){
+    if(x>0)
+        return 2;
     return 2;
 }
 
