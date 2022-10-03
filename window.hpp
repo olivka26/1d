@@ -27,6 +27,7 @@ private:
     double *c=nullptr;//Chebyshev coefficients array
     double extr[2];
     double max_y, min_y, absmax;
+    double delta_x;
 public:
     Window(QWidget *parent);
     ~Window();
@@ -34,7 +35,14 @@ public:
     QSize sizeHint()const;
     int parse_command_line(int argc, char *argv[]);
     void allocate();
-    void print_console(double delta_y);
+    void chebyshevextrema();
+    void hermiteextrema();
+    void splineextrema();
+    void chebysheverrorextrema();
+    void hermiteerrorextrema();
+    void splineerrorextrema();
+    void extrema_hunt();
+    void print_console();
 public slots:
     void change_func();
     void change_view();

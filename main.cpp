@@ -40,6 +40,8 @@ int main (int argc, char *argv[]){
     window->setCentralWidget(graph_area);
     window->show();
     app.exec();
+    delete graph_area;
+    delete tool_bar;
     delete window;
     return 0;
 }

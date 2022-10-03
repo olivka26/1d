@@ -119,7 +119,7 @@ void fillvalues(double *x, double *y, double *dy, int n, double (*f)(double), do
     }
 }
 
-void chebyshevextrema(double *c, double *cx, int n, double a, double b, double *extr){
+/*void chebyshevextrema(double *c, double *cx, int n, double a, double b, double extr[2]){
     double x1=a, y1=chebyshevvalue(x1, a, b, c, n), delta_x=(b-a)/(n-1);
     if(y1<extr[0])
         extr[0]=y1;
@@ -238,15 +238,14 @@ void chebysheverrorextrema(double *c, double *cx, int n, double a, double b, dou
     }
 }
 
-void hermiteerrorextrema(double *h, double *x, double *y, int n, double *extr, double (*f)(double)){
-    double delta_x=(x[n-1]-x[0])/(n-1);
+void Window::hermiteerrorextrema(){
     for(int i=0;i<n-1;++i){
         double x1=x[i], x2=x[i+1],y1=y[i]-hermitevaluen(x1, h, i);
         if(y1<extr[0])
             extr[0]=y1;
         if(y1>extr[1])
             extr[1]=y1;
-        for(double x3=x1+delta_x*1e-4; x3-x2<1e-6; x3+=delta_x*0.0001){
+        for(double x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
             double y3=f(x3)-hermitevaluen(x3, h, i);
             if(y3<extr[0])
                 extr[0]=y3;
@@ -263,8 +262,7 @@ void hermiteerrorextrema(double *h, double *x, double *y, int n, double *extr, d
     }
 }
 
-void splineerrorextrema(double *sp, double *x, int n, double *extr, double (*f)(double)){
-    double delta_x=(x[n-1]-x[0])/(n-1);
+void Window::splineerrorextrema(){
     for(int i=0;i<n;++i){
         double x1=x[i], x2;
         if(i)
@@ -278,7 +276,7 @@ void splineerrorextrema(double *sp, double *x, int n, double *extr, double (*f)(
             extr[0]=y1;
         if(y1>extr[1])
             extr[1]=y1;
-        for(double x3=x1+delta_x*1e-4; x3-x2<1e-6; x3+=delta_x*0.0001){
+        for(double x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
             double y3=f(x3)-splinevaluen(x3, sp, i);
             if(y3<extr[0])
                 extr[0]=y3;
@@ -293,4 +291,4 @@ void splineerrorextrema(double *sp, double *x, int n, double *extr, double (*f)(
         if(y2>extr[1])
             extr[1]=y2;
     }
-}
+}*/
