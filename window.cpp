@@ -26,11 +26,12 @@ Window::Window(QWidget *parent)
 Window::~Window(){
     free(x);
     free(y);
-    if(n<=50){
+    if(c)
         free(c);
+    if(cx)
         free(cx);
+    if(cy)
         free(cy);
-    }
     free(dy);
     free(sp);
     free(h);
@@ -61,7 +62,7 @@ int Window::parse_command_line(int argc, char *argv[]){
     fillpoints(x, n, a, b);
     if(n<=50)
         chebyshevpoints(cx, n, a, b);
-    delta_x=(b-a)/1000;
+    delta_x=(b-a)/width();
     change_func();
     return 0;
 }
@@ -275,12 +276,12 @@ void Window::extrema_hunt(){
         extr[0]=0;
         extr[1]=0;
     }
-    if(view_id!=4 && n<=50)
+    if((view_id==0 || view_id==3) && n<=50)
         chebyshevextrema();
-    if(view_id!=4){
+    if(view_id==1 || view_id==3)
         hermiteextrema();
+    if(view_id==2 || view_id==3)
         splineextrema();
-    }
     if(view_id==4 && n<=50)
         chebysheverrorextrema();
     if(view_id==4){
@@ -611,6 +612,27 @@ void Window::paintEvent(QPaintEvent* /*event*/){
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
         }
     }
+    if((view_id==0 || view_id==3) && n<=50){
+        painter.setPen(pen_cyan);
+        x1=a;
+        y1=chebyshevvalue(x1, a, b, c, n);
+        for(int i=1; i<=n; ++i){
+            if(i<n)
+                x2=cx[i];
+            else
+                x2=b;
+            for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+                y3=chebyshevvalue(x3, a, b, c, n);
+                painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
+                x1=x3;
+                y1=y3;
+            }
+            y2=chebyshevvalue(x2, a, b, c, n);
+            painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
+            x1=x2;
+            y1=y2;
+        }
+    }
     if(view_id==1 || view_id==3){
         painter.setPen(pen_green);
         for(int i=0;i<n-1;++i){
@@ -648,7 +670,7 @@ void Window::paintEvent(QPaintEvent* /*event*/){
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
         }
     }
-    if((view_id==0 || view_id==3) && n<=50){
+    /*if((view_id==0 || view_id==3) && n<=50){
         painter.setPen(pen_cyan);
         x1=a;
         y1=chebyshevvalue(x1, a, b, c, n);
@@ -664,6 +686,31 @@ void Window::paintEvent(QPaintEvent* /*event*/){
                 y1=y3;
             }
             y2=chebyshevvalue(x2, a, b, c, n);
+            painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
+            x1=x2;
+            y1=y2;
+        }
+    }*/
+    if(view_id==4 && n<=50){
+        painter.setPen(pen_cyan);
+        x1=a;
+        y1=f(x1)-chebyshevvalue(x1, a, b, c, n);
+        for(int i=1; i<=n; ++i){
+            if(i<n)
+                x2=cx[i];
+            else
+                x2=b;
+            for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+                y3=f(x3)-chebyshevvalue(x3, a, b, c, n);
+                if(fabs(x3-x[n/2])<1e-6)
+                    y3+=(p*0.1*absmax);
+                painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
+                x1=x3;
+                y1=y3;
+            }
+            y2=f(x2)-chebyshevvalue(x2, a, b, c, n);
+            if(fabs(x3-y[n/2])<1e-6)
+                y2+=(p*0.1*absmax);
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
             x1=x2;
             y1=y2;
@@ -706,7 +753,7 @@ void Window::paintEvent(QPaintEvent* /*event*/){
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
         }
     }
-    if(view_id==4 && n<=50){
+    /*if(view_id==4 && n<=50){
         painter.setPen(pen_cyan);
         x1=a;
         y1=f(x1)-chebyshevvalue(x1, a, b, c, n);
@@ -730,7 +777,7 @@ void Window::paintEvent(QPaintEvent* /*event*/){
             x1=x2;
             y1=y2;
         }
-    }
+    }*/
     painter.restore();
     painter.setPen("black");
     painter.drawText(0, 20, f_name);
