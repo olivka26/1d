@@ -97,12 +97,25 @@ void Window::allocate(){
 }
 
 void Window::chebyshevextrema(){
-    double x1=a, y1=chebyshevvalue(x1, a, b, c, n);
+    double y1=chebyshevvalue(a, a, b, c, n);
     if(y1<extr[0])
         extr[0]=y1;
     if(y1>extr[1])
         extr[1]=y1;
-    for(int i=1; i<=n; ++i){
+    y1=chebyshevvalue(b, a, b, c, n);
+    if(y1<extr[0])
+        extr[0]=y1;
+    if(y1>extr[1])
+        extr[1]=y1;
+    for(double x1=a+delta_x; x1-b<1e-6; x1+=delta_x){
+        y1=chebyshevvalue(x1, a, b, c, n);
+        if(y1<extr[0])
+            extr[0]=y1;
+        if(y1>extr[1])
+            extr[1]=y1;
+    }
+}
+    /*for(int i=1; i<=n; ++i){
         double x2, y2;
         if(i<n)
             x2=cx[i];
@@ -124,8 +137,7 @@ void Window::chebyshevextrema(){
              extr[1]=y2;
         x1=x2;
         y1=y2;
-    }
-}
+    }*/
 
 void Window::hermiteextrema(){
     for(int i=0;i<n-1;++i){
@@ -134,7 +146,39 @@ void Window::hermiteextrema(){
             extr[0]=y1;
         if(y1>extr[1])
             extr[1]=y1;
-        for(double x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+        y1=hermitevaluen(x2, h, i);
+        if(y1<extr[0])
+            extr[0]=y1;
+        if(y1>extr[1])
+            extr[1]=y1;
+        if(fabs(h[4*i+3])>1e-6){
+            double discr=h[4*i+2]*h[4*i+2]-3*h[4*i+3]*h[4*i+1], extr_p;
+            if(discr>1e-6){
+                extr_=-h[4*i+2]-sqrt(discr);
+                extr_p/=3;
+                extr_p/=h[4*i+3];
+                if(extr_p>=x1 && extr_p<=x2){
+                    y1=hermitevaluen(extr_p, h, i);
+                    if(y1<extr[0])
+                        extr[0]=y1;
+                    if(y1>extr[1])
+                        extr[1]=y1;
+                }
+                extr_=-h[4*i+2]+sqrt(discr);
+                extr_p/=3;
+                extr_p/=h[4*i+3];
+                if(extr_p>=x1 && extr_p<=x2){
+                    y1=hermitevaluen(extr_p, h, i);
+                    if(y1<extr[0])
+                        extr[0]=y1;
+                    if(y1>extr[1])
+                        extr[1]=y1;
+                }
+            }
+        }
+    }
+}
+        /*for(double x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
             double y3=hermitevaluen(x3, h, i);
             if(y3<extr[0])
                 extr[0]=y3;
@@ -147,13 +191,11 @@ void Window::hermiteextrema(){
         if(y2<extr[0])
             extr[0]=y2;
         if(y2>extr[1])
-            extr[1]=y2;
-    }
-}
+            extr[1]=y2;*/
 
 void Window::splineextrema(){
     for(int i=0;i<n;++i){
-        double x1=x[i], x2;
+        double x1=x[i], x2, y1;
         if(i)
             x1=(x[i]+x[i-1])/2.0;
         if(i!=n-1)
@@ -165,7 +207,24 @@ void Window::splineextrema(){
             extr[0]=y1;
         if(y1>extr[1])
             extr[1]=y1;
-        for(double x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+        y1=splinevaluen(x2, sp, i);
+        if(y1<extr[0])
+            extr[0]=y1;
+        if(y1>extr[1])
+            extr[1]=y1;
+        if(fabs(sp[3*i+2])>1e-6){
+            double extr_p=(-sp[3*i+1])/(2*sp[3*i+2]);
+            if(extr_p>==x1 && extr_p<=x2){
+                y1=splinevaluen(extr_p, sp, i);
+                if(y1<extr[0])
+                    extr[0]=y1;
+                if(y1>extr[1])
+                    extr[1]=y1;
+            }
+        }
+    }
+}
+        /*for(double x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
             double y3=splinevaluen(x3, sp, i);
             if(y3<extr[0])
                 extr[0]=y3;
@@ -178,12 +237,40 @@ void Window::splineextrema(){
         if(y2<extr[0])
             extr[0]=y2;
         if(y2>extr[1])
-            extr[1]=y2;
-    }
-}
+            extr[1]=y2;*/
 
 void Window::chebysheverrorextrema(){
-    double x1=a, y1=f(x1)-chebyshevvalue(x1, a, b, c, n);
+    double y1=chebyshevvalue(a, a, b, c, n)-f(a);
+    if(y1<extr[0])
+        extr[0]=y1;
+    if(y1>extr[1])
+        extr[1]=y1;
+    y1=chebyshevvalue(x[n/2], a, b, c, n)-y[n/2];
+    if(y1<extr[0])
+        extr[0]=y1;
+    if(y1>extr[1])
+        extr[1]=y1;
+    y1=chebyshevvalue(b, a, b, c, n)-f(b);
+    if(y1<extr[0])
+        extr[0]=y1;
+    if(y1>extr[1])
+        extr[1]=y1;
+    for(double x1=a+delta_x; x1-x[n/2]<1e-6; x1+=delta_x){
+        y1=chebyshevvalue(x1, a, b, c, n)-f(x1);
+        if(y1<extr[0])
+            extr[0]=y1;
+        if(y1>extr[1])
+            extr[1]=y1;
+    }
+    for(double x1=x[n/2]+delta_x; x1-b<1e-6; x1+=delta_x){
+        y1=chebyshevvalue(x1, a, b, c, n)-f(x1);
+        if(y1<extr[0])
+            extr[0]=y1;
+        if(y1>extr[1])
+            extr[1]=y1;
+    }
+}
+    /*double x1=a, y1=f(x1)-chebyshevvalue(x1, a, b, c, n);
     if(y1<extr[0])
         extr[0]=y1;
     if(y1>extr[1])
@@ -210,11 +297,192 @@ void Window::chebysheverrorextrema(){
              extr[1]=y2;
         x1=x2;
         y1=y2;
-    }
-}
+    }*/
 
 void Window::hermiteerrorextrema(){
+    if(k=0){
+        for(int i=0;i<n-1;++i){
+            double x1=x[i], x2=x[i+1], y1=hermitevaluen(x1, h, i)-y[i];
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            y1=hermitevaluen(x2, h, i)-y[i+1];
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            if(fabs(h[4*i+3])>1e-6){
+                double discr=h[4*i+2]*h[4*i+2]-3*h[4*i+3]*h[4*i+1], extr_p;
+                if(discr>1e-6){
+                    extr_=-h[4*i+2]-sqrt(discr);
+                    extr_p/=3;
+                    extr_p/=h[4*i+3];
+                    if(extr_p>=x1 && extr_p<=x2){
+                        y1=hermitevaluen(extr_p, h, i)-f(extr_p);
+                        if(y1<extr[0])
+                            extr[0]=y1;
+                        if(y1>extr[1])
+                            extr[1]=y1;
+                    }
+                    extr_=-h[4*i+2]+sqrt(discr);
+                    extr_p/=3;
+                    extr_p/=h[4*i+3];
+                    if(extr_p>=x1 && extr_p<=x2){
+                        y1=hermitevaluen(extr_p, h, i)-f(extr_p);
+                        if(y1<extr[0])
+                            extr[0]=y1;
+                        if(y1>extr[1])
+                            extr[1]=y1;
+                    }
+                }
+            }
+        }
+        return;
+    }
+    if(k==1){
+        for(int i=0;i<n-1;++i){
+            double x1=x[i], x2=x[i+1], y1=hermitevaluen(x1, h, i)-y[i];
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            y1=hermitevaluen(x2, h, i)-y[i+1];
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            if(fabs(h[4*i+3])>1e-6){
+                double discr=h[4*i+2]*h[4*i+2]-3*h[4*i+3]*(h[4*i+1]-1), extr_p;
+                if(discr>1e-6){
+                    extr_=-h[4*i+2]-sqrt(discr);
+                    extr_p/=3;
+                    extr_p/=h[4*i+3];
+                    if(extr_p>=x1 && extr_p<=x2){
+                        y1=hermitevaluen(extr_p, h, i)-f(extr_p);
+                        if(y1<extr[0])
+                            extr[0]=y1;
+                        if(y1>extr[1])
+                            extr[1]=y1;
+                    }
+                    extr_=-h[4*i+2]+sqrt(discr);
+                    extr_p/=3;
+                    extr_p/=h[4*i+3];
+                    if(extr_p>=x1 && extr_p<=x2){
+                        y1=hermitevaluen(extr_p, h, i)-f(extr_p);
+                        if(y1<extr[0])
+                            extr[0]=y1;
+                        if(y1>extr[1])
+                            extr[1]=y1;
+                    }
+                }
+            }
+        }
+        return;
+    }
+    if(k==2){
+        for(int i=0;i<n-1;++i){
+            double x1=x[i], x2=x[i+1], y1=hermitevaluen(x1, h, i)-y[i];
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            y1=hermitevaluen(x2, h, i)-y[i+1];
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            if(fabs(h[4*i+3])>1e-6){
+                double discr=(h[4*i+2]-1)*(h[4*i+2]-1)-3*h[4*i+3]*h[4*i+1], extr_p;
+                if(discr>1e-6){
+                    extr_=-h[4*i+2]+1-sqrt(discr);
+                    extr_p/=3;
+                    extr_p/=h[4*i+3];
+                    if(extr_p>=x1 && extr_p<=x2){
+                        y1=hermitevaluen(extr_p, h, i)-f(extr_p);
+                        if(y1<extr[0])
+                            extr[0]=y1;
+                        if(y1>extr[1])
+                            extr[1]=y1;
+                    }
+                    extr_=-h[4*i+2]+1+sqrt(discr);
+                    extr_p/=3;
+                    extr_p/=h[4*i+3];
+                    if(extr_p>=x1 && extr_p<=x2){
+                        y1=hermitevaluen(extr_p, h, i)-f(extr_p);
+                        if(y1<extr[0])
+                            extr[0]=y1;
+                        if(y1>extr[1])
+                            extr[1]=y1;
+                    }
+                }
+            }
+        }
+        return;
+    }
+    if(k==3){
+        for(int i=0;i<n-1;++i){
+            double x1=x[i], x2=x[i+1], y1=hermitevaluen(x1, h, i)-y[i];
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            y1=hermitevaluen(x2, h, i)-y[i+1];
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            if(fabs(h[4*i+3]-1)>1e-6){
+                double discr=h[4*i+2]*h[4*i+2]-3*(h[4*i+3]-1)*h[4*i+1], extr_p;
+                if(discr>1e-6){
+                    extr_=-h[4*i+2]-sqrt(discr);
+                    extr_p/=3;
+                    extr_p/=(h[4*i+3]-1);
+                    if(extr_p>=x1 && extr_p<=x2){
+                        y1=hermitevaluen(extr_p, h, i)-f(extr_p);
+                        if(y1<extr[0])
+                            extr[0]=y1;
+                        if(y1>extr[1])
+                            extr[1]=y1;
+                    }
+                    extr_=-h[4*i+2]+sqrt(discr);
+                    extr_p/=3;
+                    extr_p/=(h[4*i+3]-1);
+                    if(extr_p>=x1 && extr_p<=x2){
+                        y1=hermitevaluen(extr_p, h, i)-f(extr_p);
+                        if(y1<extr[0])
+                            extr[0]=y1;
+                        if(y1>extr[1])
+                            extr[1]=y1;
+                    }
+                }
+            }
+        }
+        return;
+    }
     for(int i=0;i<n-1;++i){
+        double x1=x[i], x2=x[i+1],y1=hermitevaluen(x1, h, i)-y[i];
+        if(y1<extr[0])
+            extr[0]=y1;
+        if(y1>extr[1])
+            extr[1]=y1;
+        for(double x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
+            double y3=hermitevaluen(x3, h, i)-f(x3);
+            if(y3<extr[0])
+                extr[0]=y3;
+            if(y3>extr[1])
+                extr[1]=y3;
+            x1=x3;
+            y1=y3;
+        }
+        double y2=hermitevaluen(x2, h, i)-y[i];
+        if(y2<extr[0])
+            extr[0]=y2;
+        if(y2>extr[1])
+            extr[1]=y2;
+    }
+}
+    /*for(int i=0;i<n-1;++i){
         double x1=x[i], x2=x[i+1],y1=y[i]-hermitevaluen(x1, h, i);
         if(y1<extr[0])
             extr[0]=y1;
@@ -234,10 +502,174 @@ void Window::hermiteerrorextrema(){
             extr[0]=y2;
         if(y2>extr[1])
             extr[1]=y2;
-    }
-}
+    }*/
 
 void Window::splineerrorextrema(){
+    if(k==0){
+        for(int i=0;i<n;++i){
+            double x1=x[i], x2, y1;
+            if(i)
+                x1=(x[i]+x[i-1])/2.0;
+            if(i!=n-1)
+                x2=(x[i]+x[i+1])/2.0;
+            else
+                x2=x[i];
+            double y1=splinevaluen(x1, sp, i)-f(x1);
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            y1=splinevaluen(x2, sp, i)-f(x2);
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            if(i==n/2+1){
+                y1=splinevaluen(x[n/2], sp, i)-y[n/2];
+                if(y1<extr[0])
+                    extr[0]=y1;
+                if(y1>extr[1])
+                    extr[1]=y1;
+            }
+            if(fabs(sp[3*i+2])>1e-6){
+                double extr_p=(-sp[3*i+1])/(2*sp[3*i+2]);
+                if(extr_p>==x1 && extr_p<=x2){
+                    y1=splinevaluen(extr_p, sp, i)-f(extr_p);
+                    if(y1<extr[0])
+                        extr[0]=y1;
+                    if(y1>extr[1])
+                        extr[1]=y1;
+                }
+            }
+        }
+        return;
+    }
+    if(k==1){
+        for(int i=0;i<n;++i){
+            double x1=x[i], x2, y1;
+            if(i)
+                x1=(x[i]+x[i-1])/2.0;
+            if(i!=n-1)
+                x2=(x[i]+x[i+1])/2.0;
+            else
+                x2=x[i];
+            double y1=splinevaluen(x1, sp, i)-f(x1);
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            y1=splinevaluen(x2, sp, i)-f(x2);
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            if(i==n/2+1){
+                y1=splinevaluen(x[n/2], sp, i)-y[n/2];
+                if(y1<extr[0])
+                    extr[0]=y1;
+                if(y1>extr[1])
+                    extr[1]=y1;
+            }
+            if(fabs(sp[3*i+2])>1e-6){
+                double extr_p=(-sp[3*i+1]+1)/(2*sp[3*i+2]);
+                if(extr_p>==x1 && extr_p<=x2){
+                    y1=splinevaluen(extr_p, sp, i)-f(extr_p);
+                    if(y1<extr[0])
+                        extr[0]=y1;
+                    if(y1>extr[1])
+                        extr[1]=y1;
+                }
+            }
+        }
+        return;
+    }
+    if(k==2){
+        for(int i=0;i<n;++i){
+            double x1=x[i], x2, y1;
+            if(i)
+                x1=(x[i]+x[i-1])/2.0;
+            if(i!=n-1)
+                x2=(x[i]+x[i+1])/2.0;
+            else
+                x2=x[i];
+            double y1=splinevaluen(x1, sp, i)-f(x1);
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            y1=splinevaluen(x2, sp, i)-f(x2);
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            if(i==n/2+1){
+                y1=splinevaluen(x[n/2], sp, i)-y[n/2];
+                if(y1<extr[0])
+                    extr[0]=y1;
+                if(y1>extr[1])
+                    extr[1]=y1;
+            }
+            if(fabs(sp[3*i+2]-1)>1e-6){
+                double extr_p=(-sp[3*i+1])/(2*sp[3*i+2]-2);
+                if(extr_p>==x1 && extr_p<=x2){
+                    y1=splinevaluen(extr_p, sp, i)-f(extr_p);
+                    if(y1<extr[0])
+                        extr[0]=y1;
+                    if(y1>extr[1])
+                        extr[1]=y1;
+                }
+            }
+        }
+        return;
+    }
+    if(k==3){
+        for(int i=0;i<n;++i){
+            double x1=x[i], x2, y1;
+            if(i)
+                x1=(x[i]+x[i-1])/2.0;
+            if(i!=n-1)
+                x2=(x[i]+x[i+1])/2.0;
+            else
+                x2=x[i];
+            double y1=splinevaluen(x1, sp, i)-f(x1);
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            y1=splinevaluen(x2, sp, i)-f(x2);
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+            if(i==n/2+1){
+                y1=splinevaluen(x[n/2], sp, i)-y[n/2];
+                if(y1<extr[0])
+                    extr[0]=y1;
+                if(y1>extr[1])
+                    extr[1]=y1;
+            }
+            double discr=sp[3*i+2]*sp[3*i+2]+3*sp[3*i+1];
+            if(fabs(discr)>=1e-6){
+                double extr_p=(sp[3*i+2]-sqrt(discr))/3;
+                if(extr_p>==x1 && extr_p<=x2){
+                    y1=splinevaluen(extr_p, sp, i)-f(extr_p);
+                    if(y1<extr[0])
+                        extr[0]=y1;
+                    if(y1>extr[1])
+                        extr[1]=y1;
+                }
+                extr_p=(sp[3*i+2]+sqrt(discr))/3;
+                if(extr_p>==x1 && extr_p<=x2){
+                    y1=splinevaluen(extr_p, sp, i)-f(extr_p);
+                    if(y1<extr[0])
+                        extr[0]=y1;
+                    if(y1>extr[1])
+                        extr[1]=y1;
+                }
+            }
+        }
+        return;
+    }
     for(int i=0;i<n;++i){
         double x1=x[i], x2;
         if(i)
@@ -246,13 +678,21 @@ void Window::splineerrorextrema(){
             x2=(x[i]+x[i+1])/2.0;
         else
             x2=x[i];
-        double y1=f(x1)-splinevaluen(x1, sp, i);
+        double y1;
+        if(i==n/2+1){
+            y1=splinevaluen(x[n/2], sp, i)-y[n/2];
+            if(y1<extr[0])
+                extr[0]=y1;
+            if(y1>extr[1])
+                extr[1]=y1;
+        }
+        y1=splinevaluen(x1, sp, i)-f(x1);
         if(y1<extr[0])
             extr[0]=y1;
         if(y1>extr[1])
             extr[1]=y1;
         for(double x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
-            double y3=f(x3)-splinevaluen(x3, sp, i);
+            double y3=splinevaluen(x3, sp, i)-f(x3);
             if(y3<extr[0])
                 extr[0]=y3;
             if(y3>extr[1])
@@ -260,7 +700,7 @@ void Window::splineerrorextrema(){
             x1=x3;
             y1=y3;
         }
-        double y2=f(x2)-splinevaluen(x2, sp, i);
+        double y2=splinevaluen(x2, sp, i)-f(x2);
         if(y2<extr[0])
             extr[0]=y2;
         if(y2>extr[1])
@@ -270,8 +710,20 @@ void Window::splineerrorextrema(){
 
 void Window::extrema_hunt(){
     if(view_id!=4){
-        extr[0]=min_y;
-        extr[1]=max_y;
+        if(p>0){
+            extr[1]=y[n/2];
+            if(extr[1]>max_y)
+                extr[1]=max_y;
+            extr[0]=min_y;
+        }else if(p<0){
+            extr[0]=y[n/2];
+            if(extr[0]<min_y)
+                extr[0]=min_y;
+            extr[1]=max_y;
+        }else{
+            extr[0]=min_y;
+            extr[1]=max_y;
+        }
     }else{
         extr[0]=0;
         extr[1]=0;
@@ -426,7 +878,7 @@ void Window::enhance(){
     a=a-t;
     b=b+t;
     ++s;
-    delta_x=(b-a)/1000;
+    delta_x=(b-a)/width();
     fillpoints(x, n, a, b);
     fillvalues(x, y, dy, n, f, df);
     if(p)
@@ -455,7 +907,7 @@ void Window::squeeze(){
     a=a+t;
     b=b-t;
     --s;
-    delta_x=(b-a)/1000;
+    delta_x=(b-a)/width();
     fillpoints(x, n, a, b);
     fillvalues(x, y, dy, n, f, df);
     if(p)
@@ -694,7 +1146,7 @@ void Window::paintEvent(QPaintEvent* /*event*/){
     if(view_id==4 && n<=50){
         painter.setPen(pen_cyan);
         x1=a;
-        y1=f(x1)-chebyshevvalue(x1, a, b, c, n);
+        y1=chebyshevvalue(x1, a, b, c, n)-f(x1);
         for(int i=1; i<=n; ++i){
             if(i<n)
                 x2=cx[i];
@@ -708,7 +1160,7 @@ void Window::paintEvent(QPaintEvent* /*event*/){
                 x1=x3;
                 y1=y3;
             }
-            y2=f(x2)-chebyshevvalue(x2, a, b, c, n);
+            y2=chebyshevvalue(x2, a, b, c, n)-f(x2);
             if(fabs(x3-y[n/2])<1e-6)
                 y2+=(p*0.1*absmax);
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
@@ -721,14 +1173,14 @@ void Window::paintEvent(QPaintEvent* /*event*/){
         for(int i=0;i<n-1;++i){
             x1=x[i];
             x2=x[i+1];
-            y1=y[i]-hermitevaluen(x1, h, i);
+            y1=hermitevaluen(x1, h, i)-y[i];
             for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
-                y3=f(x3)-hermitevaluen(x3, h, i);
+                y3=hermitevaluen(x3, h, i)-f(x3);
                 painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
                 x1=x3;
                 y1=y3;
             }
-            y2=y[i+1]-hermitevaluen(x2, h, i);
+            y2=hermitevaluen(x2, h, i)-y[i+1];
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
         }
         painter.setPen(pen_blue);
@@ -740,16 +1192,16 @@ void Window::paintEvent(QPaintEvent* /*event*/){
                 x2=(x[i]+x[i+1])/2.0;
             else
                 x2=x[i];
-            y1=f(x1)-splinevaluen(x1, sp, i);
+            y1=splinevaluen(x1, sp, i)-f(x1);
             for(x3=x1+delta_x; x3-x2<1e-6; x3+=delta_x){
-                y3=f(x3)-splinevaluen(x3, sp, i);
+                y3=splinevaluen(x3, sp, i)-f(x3);
                 if(fabs(x3-x[n/2])<1e-6)
                     y3+=(p*0.1*absmax);
                 painter.drawLine(QPointF(x1, y1), QPointF(x3, y3));
                 x1=x3;
                 y1=y3;
             }
-            y2=f(x2)-splinevaluen(x2, sp, i);
+            y2=splinevaluen(x2, sp, i)-f(x2);
             painter.drawLine(QPointF(x1, y1), QPointF(x2, y2));
         }
     }
