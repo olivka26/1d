@@ -26,6 +26,9 @@ private:
     double *h=nullptr;//Hermite coefficients array
     double *c=nullptr;//Chebyshev coefficients array
     double extr[2];
+    double extrc[2];
+    double extrs[2];
+    double extrh[2];
     double max_y, min_y, absmax;
     double delta_x;
 public:
@@ -35,11 +38,12 @@ public:
     QSize sizeHint()const;
     int parse_command_line(int argc, char *argv[]);
     void allocate();
+    void funcextrema();
     void chebyshevextrema();
-    void hermiteextrema();
-    void splineextrema();
     void chebysheverrorextrema();
+    void hermiteextrema();
     void hermiteerrorextrema();
+    void splineextrema();
     void splineerrorextrema();
     void extrema_hunt();
     void print_console();
